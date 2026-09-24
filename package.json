@@ -1,0 +1,33 @@
+{
+  "name": "playwrightframework",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^22.8.6"
+  },
+  "dependencies": {
+    "alert": "^6.0.2",
+    "blob": "^0.1.0",
+    "docx": "^9.0.3",
+    "docx-templates": "^4.13.0",
+    "exceljs": "^3.4.0",
+    "file-saver": "^2.0.5",
+    "git": "^0.1.5",
+    "javascript-core": "^1.1.3",
+    "officegen": "^0.6.5",
+    "popups": "^1.1.3",
+    "prompt": "^1.3.0",
+    "prompt-sync": "^4.2.0",
+    "vscode-websocket-alerts": "^1.0.10",
+    "window": "^1.0.0"
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "description": ""
+}

@@ -1,0 +1,33 @@
+// Jira upload is kept opt-in per scenario using UploadFlag in ScenarioNumbers.json.
+function isScenarioUploadEnabled(scenarioSet = {}) {
+    const value = (scenarioSet.UploadFlag || 'F').toString().trim().toUpperCase();
+    return value === 'Y';
+}
+
+// This is the integration point where the generated DOCX is attached to Jira only when the scenario allows it.
+async function attachGeneratedDocxIfConfigured(docxPath, scenarioName, scenarioSet = {}) {
+    const jiraConfig = getJiraConfig();
+    const issueKey = (process.env.JIRA_ISSUE_KEY || jiraConfig.issueKey || '').trim();
+    const uploadEnabled = isScenarioUploadEnabled(scenarioSet) && !!issueKey;
+
+    if (!uploadEnabled) {
+        return { skipped: true, reason: 'Jira upload is disabled for this scenario. Set UploadFlag to Y in ScenarioNumbers.json to enable attachment upload.' };
+    }
+
+    try {
+        const uploadResult = await uploadDocxToJira({
+            issueKey,
+            filePath: docxPath,
+            fileName: path.basename(docxPath),
+            baseUrl: jiraConfig.baseUrl,
+            email: jiraConfig.email,
+            apiToken: jiraConfig.apiToken,
+        });
+        return uploadResult;
+    } catch (error) {
+        return { skipped: false, error: error.message, status: error.status || null };
+    }
+}
+
+// Later in the scenario flow, after creating the DOCX, the framework calls the Jira upload integration.
+await attachGeneratedDocxIfConfigured(docxPath, scenarioSet.ScenarioName, scenarioSet);

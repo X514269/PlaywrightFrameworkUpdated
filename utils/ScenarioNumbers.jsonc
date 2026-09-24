@@ -1,0 +1,30 @@
+[
+    // Previously-active scenarios (commented out):
+    // { "ScenarioName": "CS_INV_REG_013", "RunFlag": "Y" },
+    
+    // { "ScenarioName": "CS_INV_REG_014", "RunFlag": "Y" },
+    // { "ScenarioName": "CS_INV_REG_043", "RunFlag": "Y" },
+    // { "ScenarioName": "CS_INV_REG_049", "RunFlag": "Y" },
+    // { "ScenarioName": "CS_INV_REG_052", "RunFlag": "Y" },
+
+    { "ScenarioName": "CS_INV_REG_063", "RunFlag": "Y" },
+    { "ScenarioName": "CS_INV_REG_095", "RunFlag": "Y" },
+    { "ScenarioName": "CS_INV_REG_097", "RunFlag": "Y" },
+    { "ScenarioName": "CS_INV_REG_119", "RunFlag": "Y" },
+    { "ScenarioName": "CS_INV_REG_129", "RunFlag": "Y" },
+
+    { "ScenarioName": "CS_INV_REG_132", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_133", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_142", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_155", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_158", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_163", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_176", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_177", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_178", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_179", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_182", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_189", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_190", "RunFlag": "N" },
+    { "ScenarioName": "CS_INV_REG_198", "RunFlag": "N" }
+]

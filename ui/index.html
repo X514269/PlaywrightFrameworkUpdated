@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  
+  <meta charset="UTF-8">
+  <title>Scenario Selector</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    .scenario-list { margin-bottom: 2em; }
+    .scenario-item { margin: 0.5em 0; }
+    button { padding: 0.5em 1em; }
+  </style>
+</head>
+<body>
+  <h1>Select Scenarios</h1>
+  <div id="loading" style="display:none; color: #007bff; font-weight: bold; margin-bottom: 1em;">Test execution in progress...</div>
+  <form id="scenarioForm">
+    <div style="margin-bottom:0.5em;">
+      <button type="button" id="selectAllBtn">Select all</button>
+      <button type="button" id="clearAllBtn">Clear all</button>
+    </div>
+    <div class="scenario-list" id="scenarioList"></div>
+    <button type="submit">Submit Selection</button>
+  </form>
+  <div id="result"></div>
+  <pre id="log" style="background:#111; color:#0f0; padding:1em; max-height:400px; overflow:auto; display:none;"></pre>
+  <script>
+    async function fetchScenarios() {
+      const res = await fetch('/scenarios');
+      const scenarios = await res.json();
+      const listDiv = document.getElementById('scenarioList');
+      listDiv.innerHTML = '';
+      scenarios.forEach((s, idx) => {
+        const item = document.createElement('div');
+        item.className = 'scenario-item';
+        item.innerHTML = `<label><input type="checkbox" name="scenario" value="${s.ScenarioName}"> ${s.ScenarioName}</label>`;
+        listDiv.appendChild(item);
+      });
+    }
+    fetchScenarios();
+
+    // Select all / clear all helpers
+    document.getElementById('selectAllBtn').addEventListener('click', () => {
+      document.querySelectorAll('input[name="scenario"]').forEach(cb => cb.checked = true);
+    });
+    document.getElementById('clearAllBtn').addEventListener('click', () => {
+      document.querySelectorAll('input[name="scenario"]').forEach(cb => cb.checked = false);
+    });
+
+    document.getElementById('scenarioForm').onsubmit = async function(e) {
+      e.preventDefault();
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('result').innerText = '';
+      const checked = Array.from(document.querySelectorAll('input[name="scenario"]:checked')).map(cb => cb.value);
+      const res = await fetch('/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selected: checked })
+      });
+      const result = await res.json();
+      document.getElementById('loading').style.display = 'none';
+      if(result.status === 'busy') {
+        document.getElementById('result').innerText = 'A test run is already in progress.';
+        return;
+      }
+      if(result.status === 'started') {
+        document.getElementById('result').innerText = 'Started test run for: ' + result.selected.join(', ');
+        const logEl = document.getElementById('log');
+        logEl.style.display = 'block';
+        logEl.textContent = '';
+        // Open SSE stream
+        const evt = new EventSource('/events');
+        evt.onmessage = function(e) {
+          try {
+            const msg = JSON.parse(e.data);
+            if(msg.type === 'stdout' || msg.type === 'stderr') {
+              logEl.textContent += msg.text.replace(/\n/g, '\n');
+            } else if(msg.type === 'exit') {
+              logEl.textContent += `\nPROCESS EXIT with code ${msg.code}\n`;
+              evt.close();
+            }
+          } catch (err) {
+            // non-JSON messages
+            logEl.textContent += e.data + '\n';
+          }
+          logEl.scrollTop = logEl.scrollHeight;
+        };
+        evt.onerror = function() {
+          logEl.textContent += '\nConnection error: Event stream closed\n';
+          evt.close();
+        };
+      } else if(result.status === 'error') {
+        document.getElementById('result').innerText = 'Error: ' + result.error + '\n' + (result.stderr || '');
+      }
+    };
+  </script>
+</body>
+</html>

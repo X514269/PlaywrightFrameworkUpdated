@@ -1,0 +1,6 @@
+[
+  { "ScenarioName": "MO_MM_REG_040", "RunFlag": "Y", "UploadFlag": "F" }
+]
+
+// UploadFlag controls whether that specific scenario is uploaded to Jira.
+// Default is F, so nothing is uploaded unless a scenario is explicitly set to Y.
