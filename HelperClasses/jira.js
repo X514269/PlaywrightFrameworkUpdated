@@ -1,3 +1,10 @@
+/**
+ * Author: GitHub Copilot
+ * Action / Modification: Add dynamic Jira target key resolution, evidence naming, and summary comment helpers without changing the existing attachment logic
+ * Timestamp: 2026-09-24T14:29:00+02:00
+ * Version: v1.0.0
+ */
+
 const fs = require('fs');
 const path = require('path');
 
@@ -29,6 +36,48 @@ function loadDotEnv(filePath = path.resolve(__dirname, '../.env')) {
     }
 
     return envValues;
+}
+
+/**
+ * Author: GitHub Copilot
+ * Action / Modification: Resolve the active Jira target issue key from scenario data, environment variables, or the default config
+ * Timestamp: 2026-09-24T14:29:00+02:00
+ * Version: v1.0.0
+ */
+function resolveTargetIssueKey(scenarioData = {}) {
+    const candidates = [
+        scenarioData.TestExecutionKey,
+        scenarioData.JiraKey,
+        scenarioData.IssueKey,
+        scenarioData.testExecutionKey,
+        scenarioData.jiraKey,
+        scenarioData.issueKey,
+        process.env.TEST_EXECUTION_KEY,
+        process.env.JIRA_ISSUE_KEY,
+        process.env.DEFAULT_JIRA_ISSUE_KEY,
+    ];
+
+    for (const candidate of candidates) {
+        const value = String(candidate || '').trim();
+        if (value) {
+            return value;
+        }
+    }
+
+    return (getJiraConfig().issueKey || '').trim();
+}
+
+/**
+ * Author: GitHub Copilot
+ * Action / Modification: Standardize the generated Jira evidence filename with scenario name, verdict, and timestamp
+ * Timestamp: 2026-09-24T14:29:00+02:00
+ * Version: v1.0.0
+ */
+function buildEvidenceFileName({ scenarioName, status, timestamp } = {}) {
+    const safeScenario = String(scenarioName || 'scenario').trim().replace(/[^a-zA-Z0-9_.-]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'scenario';
+    const safeStatus = String(status || 'UNKNOWN').trim().toUpperCase().replace(/[^A-Z0-9_]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'UNKNOWN';
+    const safeTimestamp = String(timestamp || new Date().toISOString()).replace(/[:.]/g, '-');
+    return `[AUTO]_${safeScenario}_${safeStatus}_${safeTimestamp}.docx`;
 }
 
 // Trims a Jira API response to a short, safe preview so it can be logged without dumping a huge server payload.
@@ -244,8 +293,78 @@ async function uploadDocxToJira({ issueKey, filePath, fileName, baseUrl, email, 
     }
 }
 
+/**
+ * Author: GitHub Copilot
+ * Action / Modification: Post one Jira summary comment to the resolved target execution issue with the scenario status table
+ * Timestamp: 2026-09-24T14:29:00+02:00
+ * Version: v1.0.0
+ */
+async function postJiraSummaryComment({ issueKey, baseUrl, email, apiToken, summaryRows = [] } = {}) {
+    const config = {
+        issueKey: issueKey || process.env.TEST_EXECUTION_KEY || process.env.JIRA_ISSUE_KEY || process.env.DEFAULT_JIRA_ISSUE_KEY || '',
+        baseUrl: (baseUrl || process.env.JIRA_BASE_URL || '').replace(/\/$/, ''),
+        email: email || process.env.JIRA_EMAIL || '',
+        apiToken: apiToken || process.env.JIRA_API_TOKEN || '',
+    };
+
+    if (!config.issueKey || !config.baseUrl || !config.email || !config.apiToken) {
+        console.warn('[Jira] Summary comment skipped because the target issue key or Jira credentials are not configured.');
+        return { skipped: true, reason: 'Jira summary config missing.' };
+    }
+
+    const rows = Array.isArray(summaryRows) ? summaryRows : [];
+    const passedCount = rows.filter((row) => String(row.status || '').toUpperCase() === 'PASSED').length;
+    const failedCount = rows.filter((row) => String(row.status || '').toUpperCase() === 'FAILED').length;
+    const scenarioList = rows.length > 0
+        ? rows.map((row) => `- ${row.scenarioName || 'Unknown'} | ${row.status || 'UNKNOWN'} | ${row.attachment || 'N/A'} | ${row.module || 'N/A'} | ${row.businessArea || 'N/A'}`)
+        : ['- No scenario data captured.'];
+
+    const body = [
+        `Automation summary for ${config.issueKey}`,
+        '',
+        `Total scenarios: ${rows.length}`,
+        `Passed: ${passedCount}`,
+        `Failed: ${failedCount}`,
+        '',
+        'Scenario results:',
+        ...scenarioList,
+    ].join('\n');
+
+    const authHeader = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
+
+    try {
+        const response = await fetch(`${config.baseUrl}/rest/api/3/issue/${encodeURIComponent(config.issueKey)}/comment`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Basic ${authHeader}`,
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ body }),
+        });
+
+        const responseText = await response.text();
+        if (!response.ok) {
+            throw new Error(`Jira summary comment failed with HTTP ${response.status}: ${responseText}`);
+        }
+
+        return {
+            skipped: false,
+            issueKey: config.issueKey,
+            status: response.status,
+            responseBody: responseText,
+        };
+    } catch (error) {
+        console.warn(`[Jira] ${error.message}`);
+        return { skipped: true, reason: error.message };
+    }
+}
+
 module.exports = {
     loadDotEnv,
     getJiraConfig,
+    resolveTargetIssueKey,
+    buildEvidenceFileName,
     uploadDocxToJira,
+    postJiraSummaryComment,
 };

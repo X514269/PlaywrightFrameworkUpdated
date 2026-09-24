@@ -1,6 +1,3 @@
 [
-  { "ScenarioName": "MO_GL_REG_006", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_GL_REG_031", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_GL_REG_032", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_GL_REG_033", "RunFlag": "Y", "UploadFlag": "F" }
+  { "ScenarioName": "MO_GL_REG_006", "RunFlag": "Y", "UploadFlag": "F" }
 ]

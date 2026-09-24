@@ -8,9 +8,23 @@ const {ActionLibrary} = require('../HelperClasses/ActionLibrary');
 const fs = require('fs');
 const path = require('path');
 const { keywordsExcel, runResultDir } = require('../paths.config');
+/**
+ * Author: GitHub Copilot
+ * Action / Modification: Resolve the target Jira issue dynamically and attach scenario evidence using the runner's existing Jira upload flow
+ * Timestamp: 2026-09-24T14:29:00+02:00
+ * Version: v1.0.0
+ */
+
 const { cleanupAfterDocOrBrowser, forceKillPlaywrightProcesses } = require('../utils/cleanupTestResults');
-const { getJiraConfig, uploadDocxToJira } = require('../HelperClasses/jira');
+const { getJiraConfig, uploadDocxToJira, resolveTargetIssueKey, buildEvidenceFileName, postJiraSummaryComment } = require('../HelperClasses/jira');
+const { calculateScenarioResult } = require('../HelperClasses/scenarioEvaluationService');
 const testResultsDir = path.resolve(__dirname, '../test-results');
+const runSummary = {
+    totalScenarios: 0,
+    passedScenarios: 0,
+    failedScenarios: 0,
+    summaryRows: [],
+};
 
 function ensureDirectory(dir) {
     if (!fs.existsSync(dir)) {
@@ -58,10 +72,16 @@ function isScenarioUploadEnabled(scenarioSet = {}) {
     return value === 'Y';
 }
 
+/**
+ * Author: GitHub Copilot
+ * Action / Modification: Attach the generated evidence to the dynamically resolved Jira target issue key while preserving the current UploadFlag gate
+ * Timestamp: 2026-09-24T14:29:00+02:00
+ * Version: v1.0.0
+ */
 // This is the integration point where the generated DOCX is attached to Jira only when the scenario allows it.
-async function attachGeneratedDocxIfConfigured(docxPath, scenarioName, scenarioSet = {}) {
+async function attachGeneratedDocxIfConfigured(docxPath, scenarioName, scenarioSet = {}, scenarioResult = {}) {
     const jiraConfig = getJiraConfig();
-    const issueKey = (process.env.JIRA_ISSUE_KEY || jiraConfig.issueKey || '').trim();
+    const issueKey = resolveTargetIssueKey(scenarioSet);
     const uploadEnabled = isScenarioUploadEnabled(scenarioSet) && !!issueKey;
 
     if (!uploadEnabled) {
@@ -77,6 +97,11 @@ async function attachGeneratedDocxIfConfigured(docxPath, scenarioName, scenarioS
             email: jiraConfig.email,
             apiToken: jiraConfig.apiToken,
         });
+
+        if (scenarioResult && scenarioResult.verdict) {
+            console.log(`[${scenarioName}] Jira evidence upload completed for ${issueKey} with verdict ${scenarioResult.verdict}`);
+        }
+
         return uploadResult;
     } catch (error) {
         return { skipped: false, error: error.message, status: error.status || null };
@@ -961,9 +986,26 @@ for(const scenarioSet of scenariosToRun)
         let status = keywordStatus[idx] || 'Failed';
         await operation.addText(`${action[idx]}_${locator[idx]}: ${status} >`, { color: status === 'Passed' ? '#008000' : '#FF2C2C', bold: true });
     }
+    const scenarioSummary = calculateScenarioResult({
+        MODE: process.env.MODE || 'AUTO',
+        OVERRIDE_STATUS: process.env.OVERRIDE_STATUS || scenarioSet.OVERRIDE_STATUS,
+        keywordStatus: keywordStatus.filter((status) => typeof status !== 'undefined'),
+    });
+    runSummary.totalScenarios += 1;
+    if (scenarioSummary.verdict === 'PASSED') {
+        runSummary.passedScenarios += 1;
+    } else {
+        runSummary.failedScenarios += 1;
+    }
+
     const workerIndex = process.env.PLAYWRIGHT_WORKER_INDEX || '0';
     const uniqueSuffix = `${workerIndex}_${Date.now()}`;
-    const docxPath = path.join(runResultDir, `${scenarioSet.ScenarioName}_${dateExecuted}-${monthExecuted+1}-${yearExecuted}_${hourExecuted}-${minuteExecuted}_${uniqueSuffix}.docx`);
+    const evidenceName = buildEvidenceFileName({
+        scenarioName: scenarioSet.ScenarioName,
+        status: scenarioSummary.verdict,
+        timestamp: `${dateExecuted}-${monthExecuted+1}-${yearExecuted}_${hourExecuted}-${minuteExecuted}_${uniqueSuffix}`,
+    });
+    const docxPath = path.join(runResultDir, evidenceName);
     const out = fs.createWriteStream(docxPath);
 
     await new Promise((resolve, reject) => {
@@ -972,11 +1014,39 @@ for(const scenarioSet of scenariosToRun)
         Docx.generate(out);
     });
 
-    await attachGeneratedDocxIfConfigured(docxPath, scenarioSet.ScenarioName, scenarioSet);
+    runSummary.summaryRows.push({
+        module: scenarioSet.Module || '',
+        businessArea: scenarioSet.BusinessArea || '',
+        scenarioName: scenarioSet.ScenarioName,
+        status: scenarioSummary.verdict,
+        attachment: evidenceName,
+    });
+
+    await attachGeneratedDocxIfConfigured(docxPath, scenarioSet.ScenarioName, scenarioSet, scenarioSummary);
     await page.close(); 
-    // cleanupAfterDocOrBrowser();       
+    // cleanupAfterDocOrBrowser();
 })
 }
+
+test.afterAll(async () => {
+    const targetIssueKey = resolveTargetIssueKey({
+        TestExecutionKey: process.env.TEST_EXECUTION_KEY,
+        JiraKey: process.env.JIRA_ISSUE_KEY,
+    });
+
+    if (!targetIssueKey || runSummary.totalScenarios === 0) {
+        return;
+    }
+
+    const jiraConfig = getJiraConfig();
+    await postJiraSummaryComment({
+        issueKey: targetIssueKey,
+        baseUrl: jiraConfig.baseUrl,
+        email: jiraConfig.email,
+        apiToken: jiraConfig.apiToken,
+        summaryRows: runSummary.summaryRows,
+    });
+});
 
 // test.afterAll(async () => {
 //   await new Promise(resolve => {
