@@ -1,13 +1,3 @@
-[
-  { "ScenarioName": "MO_INV_REG_021", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_022", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_031", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_032", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_033", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_041", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_042", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_065", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_066", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_100", "RunFlag": "Y", "UploadFlag": "F" },
-  { "ScenarioName": "MO_INV_REG_101", "RunFlag": "Y", "UploadFlag": "F" }
+[  
+  { "ScenarioName": "MO_MM_REG_018", "RunFlag": "Y", "UploadFlag": "F" }
 ]
