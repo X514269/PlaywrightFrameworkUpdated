@@ -7,6 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const JIRA_REQUEST_TIMEOUT_MS = 30000;
 
 // Reads values from the .env file if present so Jira credentials are available without hardcoding secrets.
 function loadDotEnv(filePath = path.resolve(__dirname, '../.env')) {
@@ -205,6 +206,7 @@ async function uploadDocxToJira({ issueKey, filePath, fileName, baseUrl, email, 
                 'X-Atlassian-Token': 'no-check',
             },
             body: formData,
+            signal: AbortSignal.timeout(JIRA_REQUEST_TIMEOUT_MS),
         });
 
         const responseBody = await response.text();
@@ -299,6 +301,7 @@ async function uploadDocxToJira({ issueKey, filePath, fileName, baseUrl, email, 
  * Timestamp: 2026-09-24T14:29:00+02:00
  * Version: v1.0.0
  */
+// Posts the run summary as Jira v3 ADF and times out so Jira cannot stall test teardown.
 async function postJiraSummaryComment({ issueKey, baseUrl, email, apiToken, summaryRows = [] } = {}) {
     const config = {
         issueKey: issueKey || process.env.TEST_EXECUTION_KEY || process.env.JIRA_ISSUE_KEY || process.env.DEFAULT_JIRA_ISSUE_KEY || '',
@@ -331,6 +334,21 @@ async function postJiraSummaryComment({ issueKey, baseUrl, email, apiToken, summ
     ].join('\n');
 
     const authHeader = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
+    const adfBody = {
+        type: 'doc',
+        version: 1,
+        content: [
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: body,
+                    },
+                ],
+            },
+        ],
+    };
 
     try {
         const response = await fetch(`${config.baseUrl}/rest/api/3/issue/${encodeURIComponent(config.issueKey)}/comment`, {
@@ -340,7 +358,8 @@ async function postJiraSummaryComment({ issueKey, baseUrl, email, apiToken, summ
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ body }),
+            body: JSON.stringify({ body: adfBody }),
+            signal: AbortSignal.timeout(JIRA_REQUEST_TIMEOUT_MS),
         });
 
         const responseText = await response.text();

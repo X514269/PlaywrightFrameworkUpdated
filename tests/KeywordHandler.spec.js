@@ -15,7 +15,6 @@ const { keywordsExcel, runResultDir } = require('../paths.config');
  * Version: v1.0.0
  */
 
-const { cleanupAfterDocOrBrowser, forceKillPlaywrightProcesses } = require('../utils/cleanupTestResults');
 const { getJiraConfig, uploadDocxToJira, resolveTargetIssueKey, buildEvidenceFileName, postJiraSummaryComment } = require('../HelperClasses/jira');
 const { calculateScenarioResult } = require('../HelperClasses/scenarioEvaluationService');
 const testResultsDir = path.resolve(__dirname, '../test-results');
@@ -26,49 +25,15 @@ const runSummary = {
     summaryRows: [],
 };
 
-function ensureDirectory(dir) {
-    if (!fs.existsSync(dir)) {
-        try {
-            fs.mkdirSync(dir, { recursive: true });
-        } catch (err) {
-            console.warn(`Could not create directory ${dir}: ${err.message}`);
-        }
-    }
-}
-
-function deleteDirectory(dir) {
-    if (fs.existsSync(dir)) {
-        try {
-            forceKillPlaywrightProcesses();
-            fs.rmSync(dir, { recursive: true, force: true });
-            console.log(`Removed directory: ${dir}`);
-        } catch (err) {
-            console.warn(`Could not remove directory ${dir}: ${err.message}`);
-            forceKillPlaywrightProcesses();
-        }
-    }
-}
-
-function clearDirectoryContents(dir) {
-    ensureDirectory(dir);
-    try {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
-        for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name);
-            if (entry.isDirectory()) {
-                fs.rmSync(fullPath, { recursive: true, force: true });
-            } else {
-                fs.unlinkSync(fullPath);
-            }
-        }
-    } catch (err) {
-        console.warn(`Could not clear contents of ${dir}: ${err.message}`);
-    }
-}
-
 // Jira upload is kept opt-in per scenario using UploadFlag in ScenarioNumbers.json.
 function isScenarioUploadEnabled(scenarioSet = {}) {
     const value = (scenarioSet.UploadFlag || 'F').toString().trim().toUpperCase();
+    return value === 'Y';
+}
+
+// Jira summary comments are opt-in per scenario through CommentFlag in ScenarioNumbers.json.
+function isScenarioCommentEnabled(scenarioSet = {}) {
+    const value = (scenarioSet.CommentFlag || 'F').toString().trim().toUpperCase();
     return value === 'Y';
 }
 
@@ -124,30 +89,6 @@ if (SCENARIO_NAME) {
     const start = (BATCH_NUM - 1) * BATCH_SIZE;
     scenariosToRun = scenariosToRun.slice(start, start + BATCH_SIZE);
 }
-
-// Guard destructive/one-time cleanup so it doesn't run in every worker.
-// Global cleanup is handled in global-setup.js; keep this guard to preserve
-// behavior when running without Playwright globalSetup (debug runs).
-if (process.env.PLAYWRIGHT_WORKER_INDEX === '0' || typeof process.env.PLAYWRIGHT_WORKER_INDEX === 'undefined') {
-    // Delete test-results directory before running any scenario or batch.
-    deleteDirectory(testResultsDir);
-    ensureDirectory(testResultsDir);
-
-    // Create temp-traces directory if it doesn't exist.
-    const tempTracesDir = path.resolve(__dirname, '../temp-traces');
-    ensureDirectory(tempTracesDir);
-} else {
-    console.log(`Worker ${process.env.PLAYWRIGHT_WORKER_INDEX} skipping top-level cleanup (global-setup handles it).`);
-}
-
-test.beforeEach(async () => {
-    forceKillPlaywrightProcesses();
-    ensureDirectory(testResultsDir);
-});
-
-test.afterEach(async () => {
-    clearDirectoryContents(testResultsDir);
-});
 
 for(const scenarioSet of scenariosToRun)
 {
@@ -1020,21 +961,28 @@ for(const scenarioSet of scenariosToRun)
         scenarioName: scenarioSet.ScenarioName,
         status: scenarioSummary.verdict,
         attachment: evidenceName,
+        commentEnabled: isScenarioCommentEnabled(scenarioSet) && isScenarioUploadEnabled(scenarioSet),
     });
 
     await attachGeneratedDocxIfConfigured(docxPath, scenarioSet.ScenarioName, scenarioSet, scenarioSummary);
-    await page.close(); 
+    await context.close();
     // cleanupAfterDocOrBrowser();
 })
 }
 
 test.afterAll(async () => {
+    const commentRows = runSummary.summaryRows.filter((row) => row.commentEnabled);
+    if (commentRows.length === 0) {
+        console.log('[Jira] Summary comment skipped because no scenario has both UploadFlag and CommentFlag enabled.');
+        return;
+    }
+
     const targetIssueKey = resolveTargetIssueKey({
         TestExecutionKey: process.env.TEST_EXECUTION_KEY,
         JiraKey: process.env.JIRA_ISSUE_KEY,
     });
 
-    if (!targetIssueKey || runSummary.totalScenarios === 0) {
+    if (!targetIssueKey) {
         return;
     }
 
@@ -1044,7 +992,7 @@ test.afterAll(async () => {
         baseUrl: jiraConfig.baseUrl,
         email: jiraConfig.email,
         apiToken: jiraConfig.apiToken,
-        summaryRows: runSummary.summaryRows,
+        summaryRows: commentRows,
     });
 });
 

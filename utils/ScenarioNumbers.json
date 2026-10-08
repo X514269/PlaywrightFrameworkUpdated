@@ -1,3 +1,24 @@
 [
-  { "ScenarioName": "MO_INV_REG_007", "RunFlag": "Y", "UploadFlag": "Y" }
+  { "ScenarioName": "MO_INV_REG_029", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_030", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_033", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_034", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_035", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_038", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_039", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_040", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_041", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_042", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_065", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_069", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_099", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_100", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_102", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_104", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_106", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_110", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_112", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_114", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" },
+  { "ScenarioName": "MO_INV_REG_125", "RunFlag": "Y", "UploadFlag": "F", "CommentFlag": "F" }
+
 ]

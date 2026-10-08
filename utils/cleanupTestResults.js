@@ -269,14 +269,7 @@ function deleteFolderWithRetry(folder, retries = DEFAULT_RETRIES, delay = DEFAUL
           console.warn(`Retry delete (${err.code}) in ${delay}ms... (${remaining} left)`);
           console.warn(`cleanupTestResults: stale handle suspected for ${folder}. Trying broad Windows cleanup and rename fallback...`);
 
-          try {
-            execSync(
-              "powershell -NoProfile -Command \"Get-CimInstance Win32_Process | Where-Object { $_.Name -in @('node.exe','chrome.exe','msedge.exe','chrome_proxy.exe') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }\"",
-              { stdio: 'pipe', encoding: 'utf-8', timeout: 10000 }
-            );
-          } catch {
-            // Ignore, this is a last-resort cleanup fallback.
-          }
+          forceKillPlaywrightProcesses();
 
           const archiveDir = `${folder}-archive-${Date.now()}`;
           try {
@@ -326,18 +319,13 @@ function forceKillPlaywrightProcesses() {
   console.log('cleanupTestResults: forceKillPlaywrightProcesses() called');
 
   try {
-    const cwd = process.cwd().replace(/\\/g, '\\\\');
     const script = `
       $items = Get-CimInstance Win32_Process |
         Where-Object {
-          $_.Name -in @('node.exe','chrome.exe','msedge.exe','chrome_proxy.exe') -and (
-            ($_.CommandLine -match 'node_modules\\@playwright\\test\\cli.js') -or
-            ($_.CommandLine -match 'playwright.config.js') -or
-            ($_.CommandLine -match 'test-server') -or
-            ($_.CommandLine -match 'remote-debugging') -or
+          $_.Name -in @('chrome.exe','msedge.exe','firefox.exe') -and (
+            ($_.CommandLine -match 'remote-debugging-pipe') -or
             ($_.CommandLine -match '--remote-debugging-port') -or
-            ($_.CommandLine -match 'playwright') -or
-            ($_.CommandLine -match '${cwd}')
+            ($_.CommandLine -match 'playwright')
           )
         } |
         Select-Object -ExpandProperty ProcessId;
@@ -376,9 +364,17 @@ function forceKillPlaywrightProcesses() {
   }
 }
 
+function clearDirectoryContents(directory) {
+  fs.mkdirSync(directory, { recursive: true });
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    fs.rmSync(path.join(directory, entry.name), { recursive: true, force: true });
+  }
+}
+
 module.exports = {
   cleanupAfterDocOrBrowser,
   deleteFolderWithRetry,
+  clearDirectoryContents,
   arePlaywrightProcessesRunning,
   forceKillPlaywrightProcesses,
 };

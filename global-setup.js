@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { forceKillPlaywrightProcesses } = require('./utils/cleanupTestResults');
+const { clearDirectoryContents, forceKillPlaywrightProcesses } = require('./utils/cleanupTestResults');
 
 const MAX_DELETE_ATTEMPTS = 5;
 const DELETE_RETRY_DELAY_MS = 1000;
@@ -12,15 +12,9 @@ function wait(ms) {
 
 async function removeDirectoryWithRetry(directory) {
   for (let attempt = 1; attempt <= MAX_DELETE_ATTEMPTS; attempt++) {
-    if (!fs.existsSync(directory)) {
-      console.log(`global-setup: Directory already missing: ${directory}`);
-      return true;
-    }
-
     try {
-      forceKillPlaywrightProcesses();
-      fs.rmSync(directory, { recursive: true, force: true });
-      console.log(`global-setup: Removed directory: ${directory}`);
+      clearDirectoryContents(directory);
+      console.log(`global-setup: Cleared directory: ${directory}`);
       return true;
     } catch (err) {
       console.warn(
@@ -42,13 +36,9 @@ module.exports = async () => {
   const tempTracesDir = path.join(root, 'temp-traces');
   const runResultDir = path.join(root, 'RunResult');
 
-  forceKillPlaywrightProcesses();
-
   try {
-    if (fs.existsSync(testResultsDir)) {
-      await removeDirectoryWithRetry(testResultsDir);
-      console.log('global-setup: Removed existing test-results directory');
-    }
+    forceKillPlaywrightProcesses();
+    await removeDirectoryWithRetry(testResultsDir);
   } catch (err) {
     console.warn(`global-setup: Could not remove test-results: ${err.message}`);
     try {
